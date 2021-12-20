@@ -1,0 +1,27 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+	let server = ns.args[0];
+	const MINUTES = 1000 * 60;
+	let weakenTime = ns.args[1] != null ? parseInt(ns.args[1]) : -1;
+	let growTime = ns.args[2] != null ? parseInt(ns.args[2]) : -1;
+	let minSecurity = ns.args[3] != null ? parseInt(ns.args[3]) : -1;
+	let currentSecurity = ns.args[4] != null ? parseInt(ns.args[4]) : -1;
+	const SECURITY_THRESHOLD = 3;
+
+	ns.print(`Weaken Time: ${weakenTime}, Grow Time: ${growTime}`)
+	// 30 second buffer + difference in time
+	let timeToSleep = (weakenTime - growTime) + (MINUTES / 2);
+	ns.print(`Time to Sleep: ${timeToSleep} milliseconds`);
+
+	await ns.grow(server); 
+	// First time run (can only do 1 grow before
+	// it is optimal to wait for the weaken to lower the grow time)
+	if (weakenTime !== -1 && growTime !== -1 && currentSecurity > (minSecurity + SECURITY_THRESHOLD)) {
+		await ns.sleep(timeToSleep);
+	}
+
+    while (true) {
+		await ns.grow(server);
+	}
+
+}

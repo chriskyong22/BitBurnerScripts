@@ -1,0 +1,27 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+	let serverToChange = ns.args[0] != null ? ns.args[0] : null;
+	let scripts = ["weaken.ns", "grow.ns", "server1.ns", "hack.ns", "writeHostName.ns"];
+	let scriptsToRun = [
+		["giveScripts.ns", "home", 1, ...scripts],
+		["startScripts.ns", "home", 1, "writeHostName.ns"],
+		["startScripts.ns", "home", 1, "grow.ns", serverToChange],
+		["startScripts.ns", "home", 1, "weaken.ns", serverToChange]
+	]
+	
+	for (let script of scriptsToRun) {
+		let [scriptname, server, threads, ...args] = script;
+		if (args[args.length - 1] === null) {
+			args.pop();
+		}
+		let PID = ns.exec(scriptname, server, threads, ...args);
+		if (PID !== 0) {
+			while (ns.isRunning(PID)) {
+				await ns.sleep(5000);
+			}
+		} else {
+			ns.tprintf(`Could not run the script ${scriptname}`)
+			ns.exit();
+		}
+	}
+}

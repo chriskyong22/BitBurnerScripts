@@ -1,0 +1,7 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+    let hackThreads = ns.args[0];
+	let server = ns.args[1];
+	ns.exec("hack.ns", "home", hackThreads, server);
+	ns.exec("weaken.ns", "home", Math.ceil(hackThreads / 25), server);
+}

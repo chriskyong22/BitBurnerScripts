@@ -1,0 +1,23 @@
+import {readResponsePort} from "command.ns";
+import {getAvailableMoney, getMaximumMoney, awaitResponse, commands} from "serverInfoHelper.ns";
+
+/** @param {NS} ns **/
+export async function main(ns) {
+    let server = ns.args[0];
+	ns.disableLog("sleep");
+	await getMaximumMoney(ns, server);
+	let maximumMoney = await awaitResponse(ns, commands.getMaxMoney, server);
+	await getAvailableMoney(ns, server);
+	let currentMoney = await awaitResponse(ns, commands.getMoney, server);
+	while (true) {
+		await getAvailableMoney(ns, server);
+		currentMoney = await awaitResponse(ns, commands.getMoney, server);
+		ns.print(`${currentMoney} / ${maximumMoney}`);
+		if (currentMoney === maximumMoney) {
+			let result = await ns.hack(server);
+			ns.toast(`[${server} hacked] ${result}`);
+		} else {
+			await ns.sleep(5000);
+		}
+	}
+}

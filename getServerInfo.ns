@@ -1,0 +1,47 @@
+import {getAllServers} from "./getServers.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+	let fileName = ns.args[0];
+	let servers = getAllServers(ns);
+	let serverMetadata = [];
+	servers.forEach((server) => {
+		let serverInfo = ns.getServer(server);
+		serverMetadata.push(JSON.stringify(serverInfo, null, 2));
+	})
+	await ns.write(fileName, serverMetadata, "w");
+}
+
+export async function getServerGrowth(ns) {
+	let fileName = ns.args[0];
+	let servers = getAllServers(ns);
+	let serverMetadata = [];
+	servers.forEach((server) => {
+		let serverInfo = ns.getServer(server);
+		if (serverInfo.moneyMax !== 0) {
+			serverInfo = { 
+				"hostname" : serverInfo.hostname,
+				"growth" : serverInfo.serverGrowth
+			}
+			serverMetadata.push(JSON.stringify(serverInfo, null, 2));
+		}
+	})
+	await ns.write(fileName, serverMetadata, "w");
+}
+
+export async function getServerMaxMoney(ns) {
+	let fileName = ns.args[0];
+	let servers = getAllServers(ns);
+	let serverMetadata = [];
+	servers.forEach((server) => {
+		let serverInfo = ns.getServer(server);
+		if (serverInfo.moneyMax !== 0) {
+			serverInfo = { 
+				"hostname" : serverInfo.hostname,
+				"MaxMoney" : serverInfo.moneyMax
+			}
+			serverMetadata.push(JSON.stringify(serverInfo, null, 2));
+		}
+	})
+	await ns.write(fileName, serverMetadata, "w");
+}

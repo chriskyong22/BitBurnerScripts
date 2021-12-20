@@ -1,0 +1,15 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+    let server = ns.args[0];
+	let file = "analyze.txt"
+	let data = {
+		"hostname" : server,
+		"hackSecurity" : ns.hackAnalyzeSecurity(1),
+		"growSecurity" : ns.growthAnalyzeSecurity(1),
+		"weakenSecurity" : ns.weakenAnalyze(1),
+		"growthAnalyze" : ns.growthAnalyze(server, ns.getServerMaxMoney(server) * Math.ceil(1 / (1 - .1))),
+		"hackAnalyze" : ns.hackAnalyze(server),
+		"hackAnalyzeThread" : ns.hackAnalyzeThreads(server, ns.getServerMaxMoney(server) * 0.1)
+	};
+	await ns.write(file, JSON.stringify(data, null, 2), "w");
+}

@@ -1,0 +1,141 @@
+import {readCommandPort, writeCommandPort, readResponsePort, peekResponsePort, writeResponsePort} from "command.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+	ns.disableLog("sleep");
+	await processCommand(ns);
+}
+
+const [growTime, hackTime, weakTime, getMoney, getMaxMoney] = ["gT", "hT", "wT", "gM", "gMM"];
+
+export const commands = {
+	growTime : growTime, 
+	hackTime : hackTime,
+	weakTime : weakTime,
+	getMoney : getMoney,
+	getMaxMoney : getMaxMoney
+};
+
+
+/**
+ * @param {ns} ns
+ * @param {ns} server
+ * Retrieve the growth time
+ */
+export async function sendCommand(ns, command, server, ...args) {
+	await writeCommandPort(ns, `${command} ${server} ${args}`);
+}
+
+/**
+ * @param {ns} ns
+ * @param {ns} server
+ * Retrieve the growth time
+ */
+export async function getGrowthTime(ns, server) {
+	await writeCommandPort(ns, `${growTime} ${server}`);
+}
+
+/**
+ * @param {ns} ns
+ * @param {ns} server
+ * Retrieve the hack time
+ */
+export async function getHackTime(ns, server) {
+	await writeCommandPort(ns, `${hackTime} ${server}`);
+}
+
+/**
+ * @param {ns} ns
+ * @param {ns} server
+ * Retrieve the weaken time
+ */
+export async function getWeakenTime(ns, server) {
+	await writeCommandPort(ns, `${weakenTime} ${server}`);
+}
+
+/**
+ * @param {ns} ns
+ * @param {ns} server
+ * Retrieve the money available
+ */
+export async function getAvailableMoney(ns, server) {
+	await writeCommandPort(ns, `${getMoney} ${server}`);
+}
+
+/**
+ * @param {ns} ns
+ * @param {ns} server
+ * Retrieve the maximum money
+ */
+export async function getMaximumMoney(ns, server) {
+	await writeCommandPort(ns, `${getMaxMoney} ${server}`);
+}
+
+/**
+ * @param {ns} ns
+ * @param {command} command
+ * @param {ns} server
+ * Wait for the message to appear in the queue
+ */
+export async function awaitResponse(ns, command, server) {
+	let message = null;
+	do {
+		message = peekResponsePort(ns);
+		while (message !== "NULL PORT DATA") {
+			message = peekResponsePort(ns);
+			// ns.print(message);
+			// ns.print(`${command} ${server}`)
+			let data, messageCommand, messageServer, rest;
+			[data, messageCommand, messageServer, ...rest] = message.split(' ');
+			if (messageCommand == command && messageServer == server) {
+				readResponsePort(ns);
+				return data;
+			}
+			await ns.sleep(400);
+		}
+		await sendCommand(ns, command, server);
+		await ns.sleep(2500);
+	} while (true);
+	
+	
+}
+
+/** @param {NS} ns **/
+async function processCommand(ns) {
+	let message = "";
+	let messageID = 0;
+	while (true) {
+		message = readCommandPort(ns);
+		while (message === "NULL PORT DATA") {
+			await ns.sleep(100);
+			message = readCommandPort(ns);
+		}
+		let command, server, args;
+		[command, server, ...args] = message.split(' ');
+		let response = "ERROR";
+		switch (command) {
+			case growTime:
+				response = ns.getServerGrowth(server);
+				break;
+			case hackTime:
+				response = ns.getHackTime(server);
+				break;
+			case weakTime:
+				response = ns.getWeakenTime(server);
+				break;
+			case getMoney:
+				response = ns.getServerMoneyAvailable(server);
+				break;
+			case getMaxMoney:
+				response = ns.getServerMaxMoney(server);
+				break;
+			default:
+				ns.print(`[Error] Command: ${command}`)
+				response = "INVALID COMMAND";
+				break;
+		}
+		messageID++;
+		// ns.print(`Writing: ${response} ${command} ${server} ${messageID}`);
+		await writeResponsePort(ns, `${response} ${command} ${server} ${messageID}`);
+	}
+}

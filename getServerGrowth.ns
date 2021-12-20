@@ -1,0 +1,6 @@
+import {getServerGrowth} from "./getServerInfo.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+    await getServerGrowth(ns);
+}

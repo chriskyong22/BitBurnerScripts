@@ -1,0 +1,43 @@
+import {readRootPort} from "command.ns"
+
+/** @param {NS} ns **/
+export function getAllServers(ns) {
+    const source = "home";
+	let toScan = [source];
+	let servers = [source];
+	while (toScan.length !== 0) {
+		let neighbors = ns.scan(toScan.shift(), true);
+		neighbors.forEach((neighbor) => {
+			if (servers.indexOf(neighbor) == -1) {
+				servers.push(neighbor);
+				toScan.push(neighbor);
+			}
+		})
+	}
+	return servers;
+}
+
+/** @param {NS} ns **/
+export async function getRootServers(ns) {
+	let servers = getAllServers(ns); 
+	let rootedServers = [];
+	const SUCCESS = "S";
+	const FAILURE = "F";
+	for (const server of servers) {
+		let PID = ns.exec("rootServer.ns", "home", 1, server);
+		if (PID <= 0) {
+			ns.print(`Error on ${server}`)
+			continue;
+		}
+		let status = readRootPort(ns);
+		while (status === "NULL PORT DATA") {
+			// ns.print(`Waiting for server's root status: ${server} with ${status}`)
+			await ns.sleep(100);
+			status = readRootPort(ns);
+		}
+		if (status === SUCCESS) {
+			rootedServers.push(server);
+		}
+	}
+	return rootedServers;
+}

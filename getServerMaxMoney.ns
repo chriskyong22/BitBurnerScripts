@@ -1,0 +1,6 @@
+import {getServerMaxMoney} from "./getServerInfo.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+    await getServerMaxMoney(ns);
+}

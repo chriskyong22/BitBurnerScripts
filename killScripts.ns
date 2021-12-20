@@ -1,0 +1,12 @@
+import {getRootServers} from "./getServers.ns"
+
+/** @param {NS} ns **/
+export function main(ns) {
+    let servers = getRootServers(ns);
+	let SAFE_SERVERS = ["home"];
+	for (const server of servers) {
+		if (SAFE_SERVERS.indexof(server) === -1) {
+			ns.killall(server);
+		}
+	}
+}

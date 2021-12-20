@@ -1,0 +1,223 @@
+let scriptID = 0;
+let runningScripts = [];
+
+const WEAKEN_SECURITY_AMOUNT = 0.05;
+const weakenToHackRatio = 25;
+const weakenToGrowRatio = 12.5;
+
+const hackScriptName = "scheduleHack.ns";
+const weakenHackScriptName = "scheduleWeaken.ns";
+const weakenGrowScriptName = "scheduleWeaken.ns";
+const growScriptName = "scheduleGrow.ns";
+
+const growOnceScript = "oneGrow.ns";
+const weakenOnceScript = "oneWeaken.ns";
+
+const weakenScriptRAM = 1.75;
+const growScriptRAM = 1.75;
+const hackScriptRAM = 1.7;
+
+/** @param {NS} ns **/
+export async function main(ns) {
+	let target = ns.args[0];
+	let hackPerctange = 0.10;
+	let host = ns.getHostname();
+	
+	let maxMoney = ns.getServerMaxMoney(target);
+	let availableMoney = ns.getServerMoneyAvailable(target);
+	if (availableMoney  === 0) {
+		ns.toast(`[Error] ${target} has 0 money`, "error");
+		ns.exit();
+	}
+
+
+	let minSecurity = ns.getServerMinSecurityLevel(target);
+	let currentSecurity = ns.getServerSecurityLevel(target);
+	let percentLeft = availableMoney / maxMoney;
+
+
+	
+	let optimalHackTime; // Hack 1
+	let optimalGrowTime; // Grow 3.2
+	let optimalWeakenTime; // Weaken 4
+
+	let hackThreads;
+	let weakenHackThreads;
+
+	percentLeft = 1 - hackPerctange;	
+	let growThreads;
+	let weakenGrowThreads;
+
+	let totalCycleRAM;
+
+	// Our exec and traversing through all scripts should exec's time <= BUFFER otherwise will be out of sync 
+	// Note do not set BUFFER too low otherwise, the increment from hack level will mess up the timings (and grow/hack can be out of sync)
+	const BUFFER = 100;
+
+	// G W H W (REPEAT)
+	let weakenGrowStart;
+	let weakenGrowEnd;
+
+	let growEnd;
+	let growStart;
+	let growSleepTime;
+
+	let hackEnd;
+	let hackStart;
+	let hackSleepTime;
+
+	let weakenHackEnd;
+	let weakenHackStart;
+
+	let cycleOrder;
+	
+	let previousHackingLevel = -1;
+	
+	while (true) {
+
+		// Lower the security to min
+		currentSecurity = ns.getServerSecurityLevel(target);
+		if (minSecurity !== currentSecurity) {
+			let weakenAmount = currentSecurity - minSecurity;
+			let weakenThreads = Math.ceil(weakenAmount / WEAKEN_SECURITY_AMOUNT);
+			ns.exec(weakenOnceScript, host, weakenThreads, target, scriptID++);
+		}
+
+		// Grow the server to max money
+		percentLeft = ns.getServerMoneyAvailable(target) / maxMoney;
+		if (percentLeft < (1 - hackPerctange)) {
+			let growThreads = ns.growthAnalyze(target, Math.ceil(100 * (1 / percentLeft)) / 100);		
+			let weakenThreads = Math.ceil(growThreads / weakenToGrowRatio);
+			ns.exec(weakenOnceScript, host, weakenThreads, target, scriptID++);
+			ns.exec(growOnceScript, host, growThreads, target, scriptID++);
+		}
+
+		ns.disableLog("sleep");
+		// Wait for growing to target and lowering to min security to complete
+		while (ns.getServerSecurityLevel(target) !== minSecurity || ns.getServerMoneyAvailable(target) < (maxMoney * (1 - hackPerctange))) {
+			await ns.sleep(15000);
+		}
+
+		// Sanity check for max money + min security
+		availableMoney = ns.getServerMoneyAvailable(target);
+		currentSecurity = ns.getServerSecurityLevel(target);
+		if (availableMoney < (maxMoney * (1 - hackPerctange)) || currentSecurity !== minSecurity) {
+			ns.toast(`[Error] ${target} has ${availableMoney} / ${maxMoney} and ${currentSecurity} / ${minSecurity}`);
+			ns.exit();
+		}
+
+		
+		// Re-sync 
+		if (ns.getHackingLevel() !== previousHackingLevel) {
+			previousHackingLevel = ns.getHackingLevel();
+
+			// At this point, server should be at max money and min security
+			optimalHackTime = ns.getHackTime(target);
+			optimalGrowTime = ns.getGrowTime(target); 
+			optimalWeakenTime = ns.getWeakenTime(target);
+			ns.tprint(`HackTime: ${optimalHackTime} GrowTime: ${optimalGrowTime}, WeakenTime: ${optimalWeakenTime}`);
+
+			// Calculating number of threads required to grow and hack ${perctange}
+			hackThreads = Math.max(1, Math.floor(hackPerctange / ns.hackAnalyze(target)));
+			weakenHackThreads = Math.ceil(hackThreads / weakenToHackRatio);
+
+			percentLeft = 1 - hackPerctange;	
+			growThreads = Math.ceil(ns.growthAnalyze(target, Math.ceil(100 * (1 / percentLeft)) / 100));
+			weakenGrowThreads = Math.ceil(growThreads / weakenToGrowRatio);
+
+			// Calculating RAM requirements 
+			totalCycleRAM = (hackThreads * hackScriptRAM) + 
+				(growThreads * growScriptRAM) + 
+				(weakenHackThreads * weakenScriptRAM) + 
+				(weakenGrowThreads * weakenScriptRAM); 
+			ns.print(`Using ${totalCycleRAM} GB per cycle with ${growThreads} grow threads, ${weakenGrowThreads} weakening the grow and ${hackThreads} hack threads with ${weakenHackThreads} weakening the hack`);
+
+
+
+			// G W H W (REPEAT)
+			weakenGrowStart = 0;
+			weakenGrowEnd = weakenGrowStart + optimalWeakenTime;
+
+			growEnd = weakenGrowEnd - BUFFER;
+			growStart = growEnd - optimalGrowTime;
+			growSleepTime = (optimalWeakenTime + growStart) - growEnd;
+
+			hackEnd = weakenGrowEnd + BUFFER;
+			hackStart = hackEnd - optimalHackTime;
+			hackSleepTime = (optimalWeakenTime + hackStart) - hackEnd;
+
+			weakenHackEnd = hackEnd + BUFFER;
+			weakenHackStart = weakenHackEnd - optimalWeakenTime;
+			
+			cycleOrder = [
+				[weakenGrowStart, "wG"],
+				[weakenHackStart, "wH"],
+				[growStart, "g"],
+				[hackStart, "h"],
+			]
+
+			ns.print(`[Grow] START: ${growStart} END: ${growEnd}\n[Weaken Grow] START: ${weakenGrowStart} END: ${weakenGrowEnd}\n[Hack] START: ${hackStart} END: ${hackEnd}\n[Weaken Hack] START: ${weakenHackStart} END: ${weakenHackEnd}`)
+			ns.print(`[HackSleepTime]: ${hackSleepTime}\n[GrowSleepTime] ${growSleepTime}`);
+		}
+
+		// Every cycle will take ${weakenHackEnd} with (BUFFER * 4) between cycles and (BUFFER) between method finishes
+		// Maximum cycles before overlapping cycles: (growEnd - hackStart) / (BUFFER * 4)
+		let cycle = 1;
+		let maxCycles = Math.floor((growEnd - hackStart) / (BUFFER * 4));
+		let cycleTime = weakenHackEnd;
+		let start = 0;
+		let server = host;
+		ns.tprint(`Max Cycles Possible ${maxCycles} with each cycle taking ${cycleTime} with ${BUFFER * 4} ms between cycles`)
+
+		ns.enableLog("sleep");
+		while (cycle <= Math.min(maxCycles, 125)) {
+
+			if ((ns.getServerMaxRam(server) - ns.getServerUsedRam(server)) < totalCycleRAM) {
+				break;
+			}
+			
+			for (const script of cycleOrder) {
+				let initialSleep = script[0];
+				switch (script[1]) {
+					case "wG":
+						ns.exec(weakenGrowScriptName, server, weakenGrowThreads, target, initialSleep, `wG${cycle}`, start + initialSleep);
+						break;
+					case "g":
+						ns.exec(growScriptName , server, growThreads, target, initialSleep, growSleepTime, `g${cycle}`, start + initialSleep);
+						break;
+					case "h": 
+						ns.exec(hackScriptName, server, hackThreads, target, initialSleep, hackSleepTime, `h${cycle}`, start + initialSleep);
+						break;
+					case "wH":
+						ns.exec(weakenHackScriptName, server, weakenHackThreads, target, initialSleep, `wH${cycle}`, start + initialSleep);
+						break;
+					default: 
+						ns.alert(`[ERROR] Invalid Script ${script[1]}`)
+						break;
+				}	
+			}
+			cycle++;
+			// Need to wait 4 * BUFFER to start next iteration otherwise overlapping intervals 
+			// 1 Buffer each for current grow weaken to hack (1) to weaken hack (2) to next cycle's growth (3) to next cycle's start of grow weaken (4).
+			start += BUFFER * 4;
+			await ns.sleep(BUFFER * 4); 
+		}
+
+		await ns.sleep((BUFFER * 2) + weakenHackEnd);
+	}
+}
+
+/**
+ * @param {NS} ns
+ * @param {number} PID 
+ */
+async function awaitScriptFinish(ns, PID) {
+	if (PID === 0) { 
+		ns.alert("[Error] waiting for exec to finish");
+		return -1;
+	}
+	while (ns.isRunning(PID)) {
+		await ns.sleep(60);
+	}
+	return 1;
+}

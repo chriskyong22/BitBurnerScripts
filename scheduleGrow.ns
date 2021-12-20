@@ -1,0 +1,13 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+	let server = ns.args[0];
+	let initialSleep = ns.args[1];
+	let cycleTime = ns.args[2];
+	await ns.sleep(initialSleep);
+
+	// while (true) {
+		ns.tprint(await ns.grow(server) + ` ${ns.args[3]}`);
+		// await ns.sleep(cycleTime);
+	// }
+	
+}

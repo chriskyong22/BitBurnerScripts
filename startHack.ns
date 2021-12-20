@@ -1,0 +1,33 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+	ns.disableLog("sleep");
+    let server = ns.args[0];
+	let maxMoney = ns.getServerMaxMoney(server);
+	let currentMoney = ns.getServerMoneyAvailable(server);
+	if (ns.getHackingLevel() < ns.getServerRequiredHackingLevel(server)) {
+		ns.alert(`${ns.getServerRequiredHackingLevel(server)} Required - ${server}`)
+	}
+
+	while (currentMoney != maxMoney) {
+		currentMoney = ns.getServerMoneyAvailable(server);  
+		await ns.sleep(60000);
+	}
+	let minSecurity = ns.getServerMinSecurityLevel(server);
+	let currentSecurity = ns.getServerSecurityLevel(server);
+	while (minSecurity != currentSecurity) {
+		currentSecurity = ns.getServerSecurityLevel(server);
+		await ns.sleep(60000);
+	}
+
+	let stealingPercent = ns.hackAnalyze(server);
+	if (stealingPercent === 0) {
+		ns.alert(`[Error]: ${stealingPercent} - ${server} - ${currentSecurity}`)
+		ns.exit();
+	}
+	
+	const hackPercent = 0.10;
+	const THREADS = Math.floor(hackPercent / stealingPercent);
+	ns.tprint(`${stealingPercent} Required threads ${THREADS} for ${server}`);
+	let args = [THREADS, server];
+	ns.exec("hackWeaken.ns", "home", 1, ...args);
+}

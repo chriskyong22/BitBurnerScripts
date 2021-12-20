@@ -1,0 +1,36 @@
+import {readBrainPort} from "command.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+	const home = "home";
+	let controlScriptArgs = ["control.txt"];
+
+	let PID = ns.exec("controlScript.ns", home, 1, ...controlScriptArgs);
+	if (PID === 0) {
+		ns.print("Error running controlScript.ns");
+		ns.exit(0);
+	} else {
+		while (ns.isRunning("controlScript.ns", "home", ...controlScriptArgs)) {
+			await ns.sleep(2000);
+		}
+	}
+	
+	let servers = JSON.parse(await ns.read(controlScriptArgs[0]));
+	ns.print(servers);
+
+	let status = "NULL PORT DATA"
+	let currentTargetServer = ns.args[0] != null ? ns.args[0] : null;
+	while (true) {
+		status = readBrainPort(ns);
+		if (status !== "NULL PORT DATA") {
+			currentTargetServer = status;
+		}
+		if (currentTargetServer === null) {
+			ns.exec("growWeakenSetup.ns", home, 1);
+		} else {
+			ns.exec("growWeakenSetup.ns", home, 1, currentTargetServer);
+		}
+		ns.print(`Currently targeting: ${currentTargetServer}`);
+		await ns.sleep(20000);
+	}
+}

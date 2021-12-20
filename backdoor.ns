@@ -1,0 +1,36 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+    function getHackableServerPaths() {
+        function helper(server, currentPath, ...scanned) {
+            var paths = []
+
+            ns.scan(server).forEach(target => {
+                if (scanned.indexOf(target) === -1) {
+                    const targetPath = [...currentPath, target]
+                    if (ns.getServerRequiredHackingLevel(target) <= ns.getHackingLevel()) {
+						paths.push(targetPath)
+					}
+                    paths.push(...helper(target, targetPath, ...scanned, server))    
+                }
+            })
+
+            return paths
+        }
+
+        return helper("home", [])
+    }
+
+    const doc = document
+    const terminalInput = doc.getElementById("terminal-input")
+    const handler = Object.keys(terminalInput)[1]
+    
+    for (const path of getHackableServerPaths()) {
+        terminalInput.value = "home; " + path.map(server => `connect ${server}; `).join('') + "backdoor"
+        terminalInput[handler].onChange({target:terminalInput})
+        terminalInput[handler].onKeyDown({keyCode:13,preventDefault:()=>null})
+
+        while (terminalInput.attributes.getNamedItem("disabled") !== null) {
+            await ns.sleep(1000)
+        }
+    }
+}

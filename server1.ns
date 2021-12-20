@@ -1,0 +1,21 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+	let server = ns.args[0];
+	let MONEY_THRESHOLD = ns.getServerMaxMoney(server) * .75;
+
+	while (true) {
+		let money = ns.getServerMoneyAvailable(server);
+		if (money > MONEY_THRESHOLD) {
+			ns.print("[Hacking] Money Threshold reached");
+			await ns.hack(ns.args[0]);
+		} 
+		if (ns.getServerSecurityLevel(server) > (ns.getServerMinSecurityLevel(server) + 4)) {
+			ns.print("[Weaken] Weakening the server security");
+			ns.print("Min Security Level: " + ns.getServerMinSecurityLevel(server));
+			await ns.weaken(server);
+		} else {
+			await ns.sleep(100);
+		}
+	}
+    
+}

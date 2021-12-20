@@ -1,0 +1,21 @@
+import {peekResponsePort, readResponsePort} from "command.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+	let previousID = peekResponsePort(ns);
+	let currentID = peekResponsePort(ns);
+	let data, command, messageServer;
+	ns.disableLog("sleep");
+    while (true) {
+		await ns.sleep(10000);
+		currentID = peekResponsePort(ns);
+		if (currentID !== "NULL PORT DATA") {
+			[data, command, messageServer, currentID] = currentID.split(" ");
+			if (currentID == previousID) {
+				ns.print(`Clearing [${currentID}]: ${data} ${command} ${messageServer}`);
+				readResponsePort(ns);
+			}
+		}
+		previousID = currentID;
+	}
+}

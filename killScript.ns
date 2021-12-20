@@ -1,0 +1,11 @@
+import {getRootServers} from "./getServers.ns"
+/** @param {NS} ns **/
+export async function main(ns) {
+	let [scriptName, ...scriptArgs] = ns.args;
+	let servers = getRootServers(ns);
+	for (let server of servers) {
+		if (ns.kill(scriptName, server, ...scriptArgs) == false) {
+			ns.print(`Could not kill ${scriptName} with args ${scriptArgs} on ${server}`)
+		};
+	}
+}

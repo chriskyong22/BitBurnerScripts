@@ -1,0 +1,59 @@
+import {writeRootPort} from "command.ns"
+
+/** 
+ * @param {NS} ns 
+ */
+export async function main(ns) {
+	let server = ns.args[0];
+	const SUCCESS = "S";
+	const FAILURE = "F";
+	if (ns.hasRootAccess(server)) {
+		await writeRootPort(ns, SUCCESS);
+		ns.exit();
+	}
+
+	let portsOpen = 0;
+	let serverInfo = ns.getServer(server);
+	if (ns.fileExists("BruteSSH.exe")) {
+		if (serverInfo.sshPortOpen == false) {
+			ns.brutessh(server);
+		}
+		portsOpen++;
+	}
+
+	if (ns.fileExists("FTPCrack.exe")) {
+		if (serverInfo.ftpPortOpen == false) {
+			ns.ftpcrack(server);
+		}
+		portsOpen++;
+	} 
+
+	if (ns.fileExists("relaySMTP.exe")) {
+		if (serverInfo.smtpPortOpen == false) {
+			ns.relaysmtp(server);
+		}
+		portsOpen++;
+	} 
+
+	if (ns.fileExists("SQLInject.exe")) {
+		if (serverInfo.sqlPortOpen == false) {
+			ns.sqlinject(server);
+		}
+		portsOpen++;
+	}
+	
+	if (ns.fileExists("HTTPWorm.exe")) {
+		if (serverInfo.httpPortOpen == false) {
+			ns.httpworm(server);
+		}
+		portsOpen++;
+	} 
+
+	if (ns.getServerNumPortsRequired(server) <= portsOpen) {
+		ns.nuke(server);
+		await writeRootPort(ns, SUCCESS);
+	} else {
+		await writeRootPort(ns, `${FAILURE} ${server}`);
+		ns.print("Could not nuke " + server);
+	}
+}

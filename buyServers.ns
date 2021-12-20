@@ -1,0 +1,101 @@
+/** 
+ * @param {NS} ns 
+ * args[0] - default GB server
+ * args[1] - how many tiers to skip by 
+ * args[2] - how many servers to buy
+ * **/
+export async function main(ns) {
+	ns.disableLog("sleep");
+	// Default GB server to buy is 8 unless specified power
+	let GB = ns.args[0] != null ? Math.pow(2, parseInt(ns.args[0])) : 8;
+
+	// Default multipler GB is one tier (meaning it will go to the next tier)
+	// Every power of 2 means it will skip to the next power tier(s)
+	// e.g. 1 is skip to next tier (x2), 2 is skip to next 2 tiers (x4) , 3 is skip to next 3 tiers (x8)
+	let multiplier = ns.args[1] != null ? Math.pow(2, parseInt(ns.args[1])) : 2;
+	let buyServerLimit = ns.args[2] != null ? parseInt(ns.args[2]) : null;
+
+	const KILOBYTE = 1024;
+	const MAXPOWER = 20;
+	const MAXGB = Math.pow(2, MAXPOWER);
+
+	// Hardcoded to save ram
+	const SERVER_LIMIT = 25; //ns.getPurchasedServerLimit()
+	const MAX_SERVER_INDEX = SERVER_LIMIT - 1;
+	
+
+	// Hardcoded to save RAM 
+	let baseCost = 55000; // ns.getPurchasedServerCost(1);
+	let maxCost = 55000 * Math.pow(2, MAXPOWER); // ns.getPurchasedServerCost(Math.pow(2, MAXPOWER))
+	let getPurchasedServerCost = (gb) => gb * baseCost;
+	
+	let servers = ns.getPurchasedServers(true);
+	let serversRam = [];
+	
+	// Figuring out the local maximum GB the servers have and finding the lowest server ram
+    let serverIndex = 0;
+	for (const server of servers) {
+		let ram = ns.getPurchasedServerMaxRam(server) / KILOBYTE;
+		GB = Math.max(GB, ram);
+		serversRam.push(ram);
+		if (ram < serversRam[serverIndex]) {
+			serverIndex = serversRam.length - 1;
+		}
+	}
+	
+	// Go to the biggest GB server you can buy
+	// Hard-coded: ns.getPurchasedServerCost(GB) to save RAM
+	if (ns.getPlayer().money >= getPurchasedServerCost(GB)) {
+		while (getPurchasedServerCost(GB) <= maxCost && ns.getPlayer().money >= getPurchasedServerCost(GB)) {
+			GB *= 2;
+		}
+		GB = Math.min(GB / 2, MAXGB);
+		ns.print(GB); 
+	}
+	
+	if (servers.length !== SERVER_LIMIT) {
+		// Start buying at server: servers.length
+		serverIndex = servers.length;
+		// Place dummy values so the arrays are at SERVER_LIMIT size
+		while (servers.length < SERVER_LIMIT) {
+			servers.push("S" + servers.length);
+			serversRam.push(0);
+		}
+	}
+	let boughtServers = 0;
+	ns.print(`Buying ${GB} GB Servers, starting at ${serverIndex} (${servers[serverIndex]}) with multiplier ${multiplier}`)
+    while (GB <= MAXGB && serversRam[MAX_SERVER_INDEX] != MAXGB) {
+		// Hard-coded: ns.getPurchasedServerCost(GB) to save RAM
+		if (ns.getPlayer().money >= getPurchasedServerCost(GB)) {
+			
+			// Sanity check to ensure we are not trying to upgrade a server that
+			// already has >= the RAM size
+			while (serverIndex !== SERVER_LIMIT && serversRam[serverIndex] >= GB) {
+				serverIndex++;
+			}
+
+			// Upgrading the ram
+			if (serverIndex !== SERVER_LIMIT) {
+				if (serversRam[serverIndex] !== 0) {
+					ns.killall(servers[serverIndex]);
+					ns.deleteServer(servers[serverIndex]);
+				}
+				ns.purchaseServer(servers[serverIndex], GB);
+				serversRam[serverIndex] = GB;
+				serverIndex++;
+				boughtServers++;
+			}
+
+			// Seeing if all servers are already upgraded to GB. 
+			if (serverIndex === SERVER_LIMIT) {
+				serverIndex = 0;
+				GB = Math.min(GB * multiplier, MAXGB);
+			}
+		}
+		if (buyServerLimit !== null && buyServerLimit == serverIndex) {
+			ns.exit();
+		}
+		ns.print(`Current GB: ${GB}GB with cost of \$${getPurchasedServerCost(GB)}`);
+		await ns.sleep(15000);
+	}
+}

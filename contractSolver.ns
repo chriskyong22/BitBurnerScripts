@@ -1,0 +1,156 @@
+import {getAllServers} from "getServers.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+	let servers = getAllServers(ns);
+	while (true) {
+		for (const server of servers) {
+			let contracts = ns.ls(server, ".cct");
+			contracts.forEach((contract) => {
+				let codingChallenge = ns.codingcontract.getContractType(contract, server);
+				let solver = null;
+				let value = null;
+				switch (codingChallenge) {
+					case "Array Jumping Game":
+						solver = solveCanJump;
+						break;
+					case "Find Largest Prime Factor": 
+						solver = solveLargestPrimeFactor;
+						break;
+					case "Subarray with Maximum Sum":
+						solver = solveSubarrayMaxSum;
+						break;
+					case "Algorithmic Stock Trader I":
+						solver = solveBuyStocksI;
+						break;
+					case "Algorithmic Stock Trader II":
+						solver = solveBuyStocksII;
+						break;
+					default:
+						ns.print(`${server} Did not implement ${ns.codingcontract.getContractType(contract, server)} with description of ${ns.codingcontract.getDescription(contract, server)}`)
+				}
+				if (solver !== null) {
+					let args = ns.codingcontract.getData(contract, server);
+					let value = ns.codingcontract.attempt(solver(args),
+						contract, server);
+					if (!value) {
+						ns.tprint(`${codingChallenge} failed using script ${solver}`);
+						ns.tprint(`Args: ${args}`);
+						ns.exit();
+					}
+					
+				}
+			})
+		}
+		await ns.sleep(60000);
+	}
+}
+
+/**
+ * @params {numbers[]} nums
+ */
+function solveCanJump (nums) {
+	if (nums.length === 1) {
+		return 1;
+	}
+
+	let maxIndex = nums[0];
+	for (let index = 0; index < nums.length; index++) {
+		if (index > maxIndex) {
+			return 0;
+		}
+		maxIndex = Math.max(maxIndex, index + nums[index]);
+		if (maxIndex === nums.length - 1) {
+			return 1;
+		}
+	}
+	return 1;
+}
+
+function isPrime(num) {
+	if (num <= 1) {
+		return false;
+	}
+
+	for (let index = 2; index < num / 2; index++) {
+		if (num % index === 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function solveLargestPrimeFactor(num) {
+	let maxFactor = 1;
+	for (let factor = 2; factor <= (num / 2); factor++) {
+		if (num % factor === 0) {
+			if (isPrime(factor)) {
+				maxFactor = Math.max(maxFactor, factor);
+			}
+		}
+	}
+	return maxFactor;
+}
+
+/**
+ * Kadane algorithm
+ */
+function solveSubarrayMaxSum(nums) {
+	let max = nums[0]
+	let previous = nums[0];
+	for(let i = 1; i < nums.length; i++){
+		previous = Math.max(nums[i], previous + nums[i]);
+		max = Math.max(previous, max);
+	} 
+	return max;
+}
+
+/**
+ * 
+ */
+function solveBuyStocksII(nums) {
+	if (nums.length === 1) {
+		return 0;
+	}
+	
+	let maxProfit = 0;
+	let stock = 0;
+	while (stock < nums.length) {
+		if (nums[stock] < nums[stock + 1]) {
+			maxProfit += nums[stock + 1] - nums[stock];
+		}
+		stock++;
+	}	
+	
+	return maxProfit;
+}
+
+/**
+ * Efficient Lookup O(n)
+ * Keep track of minimum and maximum
+ */
+function solveBuyStocksI(stocks) {
+	if (stocks.length === 1) {
+		return 0;
+	}
+	let min = stocks[0];
+	let max = stocks[0];
+	let maxDifference = stocks[1] - stocks[0];
+	for (const stockPrice of stocks) {
+		if (stockPrice < min) {
+			min = stockPrice;
+			max = 0;
+		} else {
+			max = Math.max(stockPrice, max);
+		}
+		maxDifference = Math.max(max - min, maxDifference);
+	}
+	return Math.max(0, maxDifference);
+}
+
+/**
+ * 
+ */
+function solveParenthesis(expression) {
+	
+}

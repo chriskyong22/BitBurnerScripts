@@ -1,0 +1,9 @@
+import {getRootServers} from "getServers.ns"
+/** @param {NS} ns **/
+export async function main(ns) {
+	let script = ns.args[0];
+	let servers = getRootedServers(ns);
+	for (const server of servers) {
+		
+	}
+}

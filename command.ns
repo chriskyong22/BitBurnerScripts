@@ -1,0 +1,74 @@
+export const ROOT_PORT = 1;
+export const COMMAND_PORT = 2;
+export const RESPONSE_PORT = 3;
+export const BRAIN_PORT = 20;
+
+/**
+ * @param {ns} ns
+ */
+export function readRootPort(ns) {
+    return ns.readPort(ROOT_PORT);
+}
+
+/** 
+ * @param {ns} ns 
+ * @param {data} any
+ */
+export async function writeRootPort(ns, data) {
+    return await ns.writePort(ROOT_PORT, data);
+}
+
+/** @param {ns} ns **/
+export function flushPort(ns, port) {
+	ns.clearPort(port);
+}
+
+/** @param {NS} ns **/
+export function peekResponsePort(ns) {
+    return ns.peek(RESPONSE_PORT);
+}
+
+/**
+ * @param {ns} ns
+ */
+export function readCommandPort(ns) {
+    return ns.readPort(COMMAND_PORT);
+}
+
+/** 
+ * @param {ns} ns 
+ * @param {data} any
+ */
+export async function writeCommandPort(ns, data) {
+    return await ns.writePort(COMMAND_PORT, data);
+}
+
+/**
+ * @param {ns} ns
+ */
+export function readResponsePort(ns) {
+    return ns.readPort(RESPONSE_PORT);
+}
+
+/** 
+ * @param {ns} ns 
+ * @param {data} any
+ */
+export async function writeResponsePort(ns, data) {
+    return await ns.writePort(RESPONSE_PORT, data);
+}
+
+/**
+ * @param {ns} ns
+ */
+export function readBrainPort(ns) {
+    return ns.readPort(BRAIN_PORT);
+}
+
+/** 
+ * @param {ns} ns 
+ * @param {data} any
+ */
+export async function writeBrainPort(ns, data) {
+    return await ns.writePort(BRAIN_PORT, data);
+}

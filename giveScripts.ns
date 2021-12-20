@@ -1,0 +1,11 @@
+import {getRootServers} from "./getServers.ns"
+
+/** @param {NS} ns **/
+export async function main(ns) {
+	let script = ns.args;
+	let source = "home";
+	let servers = await getRootServers(ns);
+	for (let server of servers) {
+		await ns.scp(script, source, server);
+	}
+}

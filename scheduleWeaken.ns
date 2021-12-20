@@ -1,0 +1,11 @@
+/** @param {NS} ns **/
+export async function main(ns) {
+	let server = ns.args[0];
+	let initialSleep = ns.args[1];
+	await ns.sleep(initialSleep);
+	// let cycleTime = ns.args[1];
+	// while (true) {
+		ns.tprint(await ns.weaken(server) + ` ${ns.args[2]}`);
+		// await ns.sleep(cycleTime);
+	// }
+}

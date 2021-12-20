@@ -1,0 +1,42 @@
+import {getRootServers} from "./getServers.ns";
+
+/** @param {NS} ns **/
+export async function main(ns) {
+    let script = ns.args[0];
+	let target = ns.args[1] != null ? ns.args[1] : "joesguns"
+	const GROW_SCRIPT_SIZE = 1.75;
+	const HACK_SCRIPT_SIZE = 1.70;
+	const WEAKEN_SCRIPT_SIZE = 1.75;
+	const GROW_TO_WEAK_RATIO = 12.5;
+	const HACK_TO_WEAK_RATIO = 25;
+
+	let NUM_THREADS = 1;
+
+	let rootServers = await getRootServers(ns);
+	for (const server of rootServers) {
+		if (server === "home") {
+			continue;
+		}
+		let args = [target];
+		let TOTAL_POSSIBLE_THREADS = Math.floor(ns.getServerMaxRam(server) / GROW_SCRIPT_SIZE);
+		let WEAKEN_THREADS = Math.max(Math.ceil(TOTAL_POSSIBLE_THREADS / (GROW_TO_WEAK_RATIO + 1)), 1);
+		// let scriptMem = ns.getScriptRam(script, server);
+		if (script === "weaken.ns") {
+			NUM_THREADS = WEAKEN_THREADS;
+		} else if (script === "grow.ns") {
+			NUM_THREADS = Math.max(1, TOTAL_POSSIBLE_THREADS - WEAKEN_THREADS);
+			args = [
+				target,
+				ns.getWeakenTime(target),
+				ns.getGrowTime(target),
+				ns.getServerMinSecurityLevel(target),
+				ns.getServerSecurityLevel(target)
+			]
+		} else if (script === "hack.ns") {
+			TOTAL_POSSIBLE_THREADS = Math.floor(ns.getServerMaxRam(server) / HACK_SCRIPT_SIZE);
+			WEAKEN_THREADS = Math.max(Math.ceil(TOTAL_POSSIBLE_THREADS / (HACK_TO_WEAK_RATIO + 1)), 1);
+			NUM_THREADS = Math.max(1, TOTAL_POSSIBLE_THREADS - WEAKEN_THREADS);
+		}
+		ns.exec(script, server, NUM_THREADS, ...args);
+	}
+}
